@@ -1,0 +1,783 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nurse Credentialing Model</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,600&display=swap">
+<style>
+/* Layout: an operator's console. Header with tabs, then one working surface per tab; candidate list beside its detail on wide screens. */
+:root{
+  --bg:#f5f7f7; --surface:#ffffff; --ink:#18242a; --muted:#5a6a71; --line:#d9e1e3;
+  --accent:#1f6f78; --accent-soft:#e3f0f1;
+  --good:#2f7a4a; --good-soft:#e5f2e9; --warn:#9a6a12; --warn-soft:#f8efd9; --crit:#a63b32; --crit-soft:#f8e4e1;
+  --f-display:"Source Serif 4", Georgia, serif;
+  --f-body:"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono:"IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111a1d; --surface:#18242a; --ink:#e4ecee; --muted:#9aabb1; --line:#2c3b41;
+  --accent:#62b3bb; --accent-soft:#1d3539;
+  --good:#7cc79a; --good-soft:#1b3326; --warn:#e2b45a; --warn-soft:#3a2f17; --crit:#ef8a80; --crit-soft:#3e2220; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111a1d; --surface:#18242a; --ink:#e4ecee; --muted:#9aabb1; --line:#2c3b41;
+  --accent:#62b3bb; --accent-soft:#1d3539;
+  --good:#7cc79a; --good-soft:#1b3326; --warn:#e2b45a; --warn-soft:#3a2f17; --crit:#ef8a80; --crit-soft:#3e2220; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:14px/1.5 var(--f-body);padding-inline:16px;padding-block:20px 48px}
+a{color:var(--accent)}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+header{display:flex;flex-direction:column;gap:6px}
+h1{font:600 1.7rem/1.2 var(--f-display);margin:0;text-wrap:balance}
+.sub{color:var(--muted);margin:0;max-width:74ch}
+.notes{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.note{display:inline-flex;gap:6px;align-items:center;font-size:12.5px;padding:4px 9px;border-radius:4px;width:fit-content}
+.note.warn{color:var(--warn);background:var(--warn-soft)}
+.note.good{color:var(--good);background:var(--good-soft)}
+.note select{width:auto;padding:2px 4px;font-size:12.5px}
+nav{display:flex;gap:4px;border-bottom:1px solid var(--line);overflow-x:auto}
+nav button{font:500 14px var(--f-body);background:none;border:0;border-bottom:2px solid transparent;color:var(--muted);padding:8px 12px;cursor:pointer;white-space:nowrap}
+nav button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:16px;min-width:0}
+.panel h2{font:600 15px var(--f-body);margin:0 0 10px}
+.panel h3{font:600 12px var(--f-body);margin:18px 0 6px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.grid{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:16px;align-items:start}
+@media (max-width:880px){.grid{grid-template-columns:1fr}}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;margin-bottom:10px}
+.btn{font:500 13px var(--f-body);border:1px solid var(--accent);background:var(--accent);color:var(--surface);border-radius:4px;padding:6px 12px;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--accent)}
+.btn.small{padding:3px 9px;font-size:12px}
+.btn.danger{border-color:var(--crit);background:transparent;color:var(--crit)}
+.btn:disabled{opacity:.5;cursor:default}
+.list{display:flex;flex-direction:column}
+.row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;padding:10px 8px;border:0;border-top:1px solid var(--line);cursor:pointer;text-align:left;background:none;color:inherit;font:inherit;width:100%}
+.row:first-child{border-top:0}
+.row[aria-current="true"]{background:var(--accent-soft)}
+.row .name{font-weight:600}
+.row .meta{color:var(--muted);font-size:12.5px;grid-column:1}
+.row .chips{grid-column:2;grid-row:1 / span 2;display:flex;flex-direction:column;gap:4px;align-items:flex-end}
+.chip{font-size:11.5px;font-weight:500;padding:2px 7px;border-radius:999px;white-space:nowrap;background:var(--accent-soft);color:var(--accent);display:inline-flex;gap:4px;align-items:center}
+.chip.good{background:var(--good-soft);color:var(--good)}
+.chip.warn{background:var(--warn-soft);color:var(--warn)}
+.chip.crit{background:var(--crit-soft);color:var(--crit)}
+.chip.ex{background:transparent;border:1px dashed var(--muted);color:var(--muted)}
+.chip button{background:none;border:0;color:inherit;cursor:pointer;padding:0 0 0 2px;font:inherit}
+.mono{font-family:var(--f-mono);font-size:12.5px}
+.kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+label.f{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted)}
+input,select{font:14px var(--f-body);color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:6px 8px;width:100%;min-width:0}
+input[type=file]{padding:4px;font-size:12.5px}
+.inline{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end}
+.inline > *{flex:1 1 140px}
+.inline > .btn{flex:0 0 auto}
+.tbl-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:500}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+.cks{display:flex;flex-direction:column}
+.ck{display:grid;grid-template-columns:18px minmax(0,1fr) auto;gap:4px 10px;padding:9px 0;border-top:1px solid var(--line);align-items:start}
+.ck:first-child{border-top:0}
+.dot{width:12px;height:12px;border-radius:50%;margin-top:4px;border:2px solid var(--muted)}
+.dot.done{background:var(--good);border-color:var(--good)}
+.dot.rev{border-color:var(--crit)}
+.dot.unc{border-color:var(--warn);background:var(--warn-soft)}
+.ck .t{font-weight:500}
+.ck .d{font-size:12px;color:var(--muted)}
+.ck .d b{font-weight:500;color:var(--ink)}
+.subform{grid-column:2 / span 2;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;background:var(--bg);border:1px solid var(--line);border-radius:5px;padding:10px;margin-top:6px}
+.subform .actions,.actions{grid-column:1 / -1;display:flex;gap:8px;justify-content:flex-end;align-items:center;flex-wrap:wrap}
+.err{color:var(--crit);font-size:12.5px;margin-right:auto}
+.gate{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:10px 12px;border-radius:5px;margin-bottom:12px;font-weight:500}
+.gate.good{background:var(--good-soft);color:var(--good)}
+.gate.crit{background:var(--crit-soft);color:var(--crit)}
+.gate.warn{background:var(--warn-soft);color:var(--warn)}
+.statepick{display:flex;flex-wrap:wrap;gap:4px}
+.statepick button{font:500 12px var(--f-mono);border:1px solid var(--line);background:var(--bg);color:var(--muted);border-radius:3px;padding:3px 5px;cursor:pointer;min-width:34px}
+.statepick button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:14px}
+.tile .v{font:600 1.8rem/1.1 var(--f-display);font-variant-numeric:tabular-nums}
+.tile .l{color:var(--muted);font-size:12.5px}
+.bar{display:flex;align-items:center;gap:8px;font-size:13px}
+.bar .track{flex:1;height:10px;background:var(--bg);border:1px solid var(--line);border-radius:2px;overflow:hidden}
+.bar .fill{height:100%;background:var(--accent);display:block}
+.bar .lab{width:130px;flex:none}
+.bar .n{width:24px;text-align:right;font-variant-numeric:tabular-nums}
+.empty{color:var(--muted);padding:12px 0}
+.foot{color:var(--muted);font-size:12px;max-width:92ch}
+.legend{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+.hist{font-size:12.5px;display:flex;flex-direction:column;gap:6px;max-height:280px;overflow:auto}
+.hist div{display:grid;grid-template-columns:140px minmax(0,1fr);gap:8px}
+.hist .w{color:var(--muted);font-variant-numeric:tabular-nums}
+@media (max-width:480px){.hist div{grid-template-columns:1fr}}
+.limits{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+.limits ul{margin:0;padding-left:18px;font-size:13px;display:flex;flex-direction:column;gap:4px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head><body>
+
+<div class="wrap">
+  <header>
+    <h1>RN and LVN Credentialing Model</h1>
+    <p class="sub">The routing and gate logic for multi-state clinical hiring. A check only counts when it is backed by a log entry the platform ties to the person who made it, and a nurse is only cleared after a second person signs off.</p>
+    <div class="notes"><span class="note warn" id="modeNote">Loading records…</span><span id="actor"></span></div>
+  </header>
+  <nav role="tablist" aria-label="Sections">
+    <button role="tab" aria-selected="true" data-tab="pipeline">Pipeline</button>
+    <button role="tab" aria-selected="false" data-tab="monitor">Monitoring</button>
+    <button role="tab" aria-selected="false" data-tab="audit">Audit log</button>
+    <button role="tab" aria-selected="false" data-tab="score">Scorecard</button>
+    <button role="tab" aria-selected="false" data-tab="rules">Rules and tests</button>
+  </nav>
+  <section id="view-pipeline"></section>
+  <section id="view-monitor" hidden></section>
+  <section id="view-audit" hidden></section>
+  <section id="view-score" hidden></section>
+  <section id="view-rules" hidden></section>
+  <p class="foot">Interactive demo by Aleena Maryam of a multi-state nurse credentialing process. All candidates are invented examples and nothing is saved. Use invented test records only. The Rules and tests tab lists what this prototype enforces and what a production system must add.</p>
+</div>
+
+<script>
+/* ===== Reference data ===== */
+const NAMES={AL:"Alabama",AK:"Alaska",AZ:"Arizona",AR:"Arkansas",CA:"California",CO:"Colorado",CT:"Connecticut",DE:"Delaware",DC:"District of Columbia",FL:"Florida",GA:"Georgia",HI:"Hawaii",ID:"Idaho",IL:"Illinois",IN:"Indiana",IA:"Iowa",KS:"Kansas",KY:"Kentucky",LA:"Louisiana",ME:"Maine",MD:"Maryland",MA:"Massachusetts",MI:"Michigan",MN:"Minnesota",MS:"Mississippi",MO:"Missouri",MT:"Montana",NE:"Nebraska",NV:"Nevada",NH:"New Hampshire",NJ:"New Jersey",NM:"New Mexico",NY:"New York",NC:"North Carolina",ND:"North Dakota",OH:"Ohio",OK:"Oklahoma",OR:"Oregon",PA:"Pennsylvania",RI:"Rhode Island",SC:"South Carolina",SD:"South Dakota",TN:"Tennessee",TX:"Texas",UT:"Utah",VT:"Vermont",VA:"Virginia",WA:"Washington",WV:"West Virginia",WI:"Wisconsin",WY:"Wyoming"};
+const CODES=Object.keys(NAMES).sort();
+const DEFAULT_RULES={id:"builtin",version:"v1",effective:"2026-10-01",source:"NCSBN NLC implementation map",note:"Initial rule set",
+  compact:["AL","AZ","AR","CO","CT","DE","FL","GA","ID","IN","IA","KS","KY","LA","ME","MD","MS","MO","MT","NE","NH","NJ","NM","NC","ND","OH","OK","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY"],pending:["MA"]};
+const STAGES=["Pre-screen","License pre-check","Interview","Reference checks","Conditional offer","Licensure path","Credentialing","Onboarding","Active","Withdrawn"];
+const TARGET={"Pre-screen":1,"License pre-check":1,"Interview":5,"Reference checks":3,"Conditional offer":2,"Credentialing":10,"Onboarding":5};
+const CHECKS=[
+  {id:"qc",l:"Nursys QuickConfirm license check",src:"Nursys QuickConfirm",hint:"Search by license number or NCSBN ID"},
+  {id:"en",l:"Nursys e-Notify enrollment",src:"Nursys e-Notify",hint:"Identity-matched; alerts on any change"},
+  {id:"ref",l:"Reference checks",src:"Two professional references",hint:"At least one clinical supervisor"},
+  {id:"edu",l:"Education verified",src:"School or National Student Clearinghouse",hint:"Guards against diploma fraud"},
+  {id:"oig",l:"OIG LEIE exclusion check",src:"OIG LEIE",hint:"At hire, then monthly"},
+  {id:"sam",l:"SAM.gov exclusion check",src:"SAM.gov",hint:"At hire, then monthly"},
+  {id:"med",l:"State Medicaid exclusion lists",src:"State Medicaid lists",hint:"Every patient state"},
+  {id:"bg",l:"Criminal background check",src:"Background vendor",hint:"Plus state fingerprinting where required"},
+  {id:"i9",l:"Form I-9",src:"I-9 / E-Verify",hint:"Within 3 business days of start"},
+  {id:"tb",l:"TB screening and immunizations",src:"Clinical records",hint:"Per clinical policy"},
+  {id:"bls",l:"BLS/CPR card",src:"Issuing body",hint:"Record the card's expiry"},
+  {id:"hipaa",l:"HIPAA training",src:"Training system",hint:"Before access to patient records"},
+  {id:"bbp",l:"Bloodborne pathogens training",src:"Training system",hint:"At first assignment, then yearly"},
+  {id:"scope",l:"State scope training",src:"Internal module",hint:"One module per patient state"}
+];
+const FILE_TYPES=["application/pdf","image/png","image/jpeg","image/webp"];
+
+/* ===== Dates: calendar dates are local strings, never UTC conversions ===== */
+const pad=n=>String(n).padStart(2,"0");
+const localISO=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const todayISO=()=>localISO(new Date());
+const dayNum=s=>{const [y,m,d]=s.split("-").map(Number);return Date.UTC(y,m-1,d)/864e5};
+const daysBetween=(a,b)=>dayNum(b)-dayNum(a);
+const plusDays=(s,n)=>{const [y,m,d]=s.split("-").map(Number);return localISO(new Date(y,m-1,d+n))};
+const addDays=n=>plusDays(todayISO(),n);
+const daysFrom=s=>daysBetween(todayISO(),s);
+const fmt=s=>{if(!s)return"";const [y,m,d]=s.slice(0,10).split("-").map(Number);return new Date(y,m-1,d).toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"})};
+const fmtT=s=>new Date(s).toLocaleString(undefined,{month:"short",day:"numeric",year:"numeric",hour:"numeric",minute:"2-digit"});
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+/* ===== State ===== */
+let db=null,user=null,assets=null,me=null,demo=false,readOnly=false,isOwner=false,isAdmin=false;
+let people=[],screens=[],rulesets=[],names={};
+const LOG={};let logs=[],logsReady=false;const loadedLogs=new Set(),logSubs={};
+let demoActor="demo-you";
+let selected=null,adding=false,tab="pipeline";
+let ui={ck:null,ckDraft:{},ckErr:"",ckFile:null,busy:false,move:false,moveDraft:{},soErr:""};
+let addDraft={name:"",type:"LVN/LPN",home:"TX",multi:"1",lic:"",exp:addDays(365),start:"",work:[]};
+let scrDraft={date:todayISO(),result:"No matches",evidence:""},scrErr="";
+let ruleDraft={state:"MA",status:"compact",effective:todayISO(),note:""},ruleErr="";
+const actorId=()=>demo?demoActor:me;
+
+/* ===== Rules ===== */
+function currentRules(at=todayISO()){
+  const live=rulesets.filter(r=>r.effective<=at).sort((a,b)=>(a.effective+a.createdAt).localeCompare(b.effective+b.createdAt));
+  return live.length?live[live.length-1]:DEFAULT_RULES;
+}
+const isCompact=(R,s)=>R.compact.includes(s);
+const statusOf=(R,s)=>isCompact(R,s)?"compact":R.pending.includes(s)?"pending":"non";
+const moved=p=>!!(p.prevHome&&p.movedOn&&p.prevHome!==p.home);
+function multiValid(p,R,at=todayISO()){
+  if(!p.multi) return {ok:false,why:"single"};
+  if(moved(p)){
+    if(!isCompact(R,p.home)) return {ok:false,why:"Moved to non-compact "+p.home+": the multistate license no longer covers other states"};
+    const d=daysBetween(p.movedOn,at);
+    if(d>60) return {ok:false,why:"Moved to "+p.home+" "+d+" days ago: the 60-day window to license there has ended"};
+    return {ok:true,warn:"Moved to "+p.home+": must license there by "+fmt(plusDays(p.movedOn,60))};
+  }
+  if(!isCompact(R,p.home)) return {ok:false,why:p.home+" is non-compact, so a multistate license is not available"};
+  return {ok:true};
+}
+function route(p,w,R,at=todayISO()){
+  const board=w==="CA"?(p.type==="RN"?"the Board of Registered Nursing":"the BVNPT (vocational nursing board)"):"the "+NAMES[w]+" board";
+  const licState=moved(p)?p.prevHome:p.home;
+  const app=p.apps?.[w];
+  const pendingApp=app?.submitted&&!app?.issued?{ok:false,kind:"warn",t:"Application submitted "+fmt(app.submitted),a:daysBetween(app.submitted,at)+" days waiting on "+board,need:true,applied:true}:null;
+  if((p.other||[]).includes(w)) return {ok:true,kind:"good",t:"Holds "+w+" license",a:"Verify with "+board};
+  if(w===licState) return {ok:true,kind:"good",t:moved(p)?"License from former home state":"Home-state license",a:w==="CA"?"Verify with "+board+" and Nursys":"Verify on Nursys"};
+  if(isCompact(R,w)){
+    const mv=multiValid(p,R,at);
+    if(mv.ok) return {ok:true,kind:mv.warn?"warn":"good",t:"Covered by multistate license",a:mv.warn||"Confirm the multistate designation on Nursys"};
+    if(pendingApp) return pendingApp;
+    if(mv.why==="single"&&isCompact(R,p.home)&&!moved(p)) return {ok:false,kind:"crit",t:"Needs multistate upgrade",a:"Nurse applies to the "+p.home+" board for multistate status, or licenses in "+w,need:true};
+    return {ok:false,kind:"crit",t:"Needs "+w+" license",a:(mv.why==="single"?"Apply to "+board+" by endorsement":mv.why),need:true};
+  }
+  if(pendingApp) return pendingApp;
+  return {ok:false,kind:"crit",t:"Needs "+w+" license",a:(R.pending.includes(w)?"Compact passed but not live. ":"")+"Apply to "+board+" by endorsement; Nursys verification is $30 per board",need:true};
+}
+
+/* ===== Record integrity ===== */
+const uidOf=path=>path?.split("/")[1]||null;
+function ckStatus(p,c){
+  const r=p.checks?.[c.id];
+  if(!r) return {s:"none"};
+  if(r.status==="reverted") return {s:"reverted",r,by:uidOf(r.revertLogRef)};
+  if(r.status!=="done") return {s:"none"};
+  const e=LOG[r.logRef];
+  if(e&&e.kind==="check"&&e.cid===p.id&&e.ck===c.id&&e.date===r.date) return {s:"valid",r,by:uidOf(r.logRef),e};
+  return {s:logsReady?"unconfirmed":"loading",r,by:uidOf(r.logRef)};
+}
+const done=p=>CHECKS.filter(c=>ckStatus(p,c).s==="valid").length;
+const verifiers=p=>new Set(CHECKS.map(c=>ckStatus(p,c)).filter(x=>x.s==="valid").map(x=>x.by));
+const latestCheckTs=p=>CHECKS.map(c=>ckStatus(p,c)).filter(x=>x.s==="valid").map(x=>x.e.ts).sort().pop()||"";
+const sodOk=(verifierSet,signer)=>!!signer&&!verifierSet.has(signer);
+function signoff(p){
+  const so=p.signoff; if(!so?.logRef) return {s:"none"};
+  const e=LOG[so.logRef], by=uidOf(so.logRef);
+  if(!e||e.kind!=="signoff"||e.cid!==p.id) return {s:logsReady?"unconfirmed":"loading"};
+  if(e.ts<latestCheckTs(p)) return {s:"stale",by,e};
+  if(!sodOk(verifiers(p),by)) return {s:"conflict",by,e};
+  return {s:"valid",by,e};
+}
+const licOk=p=>(p.work||[]).length>0&&p.work.every(w=>route(p,w,currentRules()).ok);
+const allChecks=p=>done(p)===CHECKS.length;
+const cleared=p=>licOk(p)&&allChecks(p)&&signoff(p).s==="valid";
+function flags(p){
+  const f=[]; if(p.stage==="Withdrawn") return f;
+  const R=currentRules();
+  if(["Onboarding","Active"].includes(p.stage)&&!cleared(p)) f.push(["crit","Not cleared: do not schedule"]);
+  if(p.start) CHECKS.forEach(c=>{const x=ckStatus(p,c);if(x.s==="valid"&&x.r.date>p.start) f.push(["crit",c.l+" dated after start"])});
+  CHECKS.forEach(c=>{if(ckStatus(p,c).s==="unconfirmed") f.push(["crit",c.l+": no matching log entry"])});
+  if(moved(p)&&p.multi){const mv=multiValid(p,R);f.push([mv.ok?"warn":"crit",mv.ok?mv.warn:mv.why])}
+  if(p.expiry){const d=daysFrom(p.expiry);if(d<0) f.push(["crit","License expired"]);else if(d<=30) f.push(["crit","License renews in "+d+"d: re-verify"]);else if(d<=90) f.push(["warn","License renews in "+d+"d"])}
+  const t=TARGET[p.stage],age=p.since?-daysFrom(p.since):0;
+  if(t!=null&&age>t) f.push(["warn",p.stage+": "+age+"d (target "+t+")"]);
+  return f;
+}
+function who(id){
+  if(id==="example") return "Example verifier";
+  if(id==="demo-you") return "You (demo)";
+  if(id==="demo-reviewer") return "Second reviewer (demo)";
+  if(id&&id===me) return names[id]?names[id]+" (you)":"You";
+  return names[id]||"Someone";
+}
+
+/* ===== Writes: the log entry goes first, the record points at it ===== */
+async function writeLog(e){
+  const entry={...e,ts:new Date().toISOString()};
+  if(demo){const path=`log/${demoActor}/entries/${Math.random().toString(36).slice(2,12)}`;LOG[path]={...entry,by:demoActor,path};rebuildLogs();return path}
+  const ref=db.collection(`log/${me}/entries`).doc();
+  await ref.set(entry);
+  return ref.path;
+}
+async function patchCand(p,patch){
+  if(demo){deepMerge(p,patch);return}
+  await db.doc("candidates/"+p.id).update(patch);
+}
+function deepMerge(t,s){for(const k in s){if(s[k]&&typeof s[k]==="object"&&!Array.isArray(s[k])){t[k]=t[k]&&typeof t[k]==="object"?t[k]:{};deepMerge(t[k],s[k])}else t[k]=s[k]}}
+async function act(fn){
+  if(ui.busy) return; ui.busy=true;
+  try{await fn()}catch(e){handleWriteErr(e)}
+  finally{ui.busy=false;renderAll()}
+}
+function handleWriteErr(e){
+  console.error(e);
+  if(e?.code==="invalid_argument"&&!demo){readOnly=true}
+  flash(e?.code==="quota_exceeded"?"The record store is full. Remove example records to make room.":e?.code==="invalid_argument"?"You do not have permission to change these records.":"That change was not saved. Check your connection and try again.");
+}
+function flash(m){const n=document.getElementById("modeNote");n.className="note warn";n.textContent=m;setTimeout(setNote,6000)}
+async function logged(p,entry,patch){
+  const path=await writeLog({cid:p?.id||"",cname:p?.name||"",...entry});
+  if(patch) await patchCand(p,typeof patch==="function"?patch(path):patch);
+  return path;
+}
+
+/* ===== Rendering helpers ===== */
+function keepFocus(fn){
+  const a=document.activeElement,id=a?.id;let s=null,e=null;
+  try{s=a.selectionStart;e=a.selectionEnd}catch{}
+  fn();
+  if(id){const n=document.getElementById(id);if(n&&n!==document.activeElement){n.focus();try{if(s!=null)n.setSelectionRange(s,e)}catch{}}}
+}
+const opts=(list,sel,lab=x=>x)=>list.map(x=>`<option value="${esc(x)}" ${x===sel?"selected":""}>${esc(lab(x))}</option>`).join("");
+const stateOpts=(sel,skip=[])=>CODES.filter(s=>!skip.includes(s)).map(s=>`<option value="${s}" ${s===sel?"selected":""}>${s} · ${NAMES[s]}</option>`).join("");
+
+/* ===== Pipeline ===== */
+function renderPipeline(){
+  const v=document.getElementById("view-pipeline");
+  const actv=people.filter(p=>p.stage!=="Withdrawn"),wd=people.filter(p=>p.stage==="Withdrawn");
+  const p=people.find(x=>x.id===selected);
+  const exCount=people.filter(x=>x.example).length;
+  v.innerHTML=`<div class="grid">
+    <div class="panel">
+      <div class="toolbar"><h2 style="margin:0">Candidates (${actv.length})</h2><button class="btn" id="addBtn" ${readOnly?"disabled":""}>Add candidate</button></div>
+      ${people.length?`<div class="list">${[...actv,...wd].map(x=>{
+        const lic=licOk(x),all=allChecks(x),so=signoff(x).s;
+        const st=x.stage==="Withdrawn"?'<span class="chip ex">Withdrawn</span>':cleared(x)?'<span class="chip good">Cleared</span>':!lic?'<span class="chip crit">License gap</span>':all?'<span class="chip warn">Awaiting sign-off</span>':'<span class="chip warn">'+done(x)+'/'+CHECKS.length+' checks</span>';
+        return `<button class="row" data-id="${esc(x.id)}" aria-current="${x.id===selected&&!adding}">
+          <span class="name">${esc(x.name)}</span>
+          <span class="chips"><span class="chip">${esc(x.stage)}</span>${st}</span>
+          <span class="meta">${esc(x.type)} · lives in ${esc(x.home)} · patients in ${esc((x.work||[]).join(", ")||"none set")}${x.example?" · example":""}</span>
+        </button>`}).join("")}</div>`:`<p class="empty">No candidates yet. Add the first one to see their licensing route and checklist.</p>`}
+      ${exCount&&isOwner&&!demo?`<div class="toolbar" style="margin:12px 0 0"><span class="foot">${exCount} example record(s)</span><button class="btn ghost small" id="clearEx">Remove examples</button></div>`:""}
+    </div>
+    <div class="panel" id="detail">${adding?formHtml():p?detailHtml(p):'<p class="empty">Select a candidate to see their route, credential file and record history.</p>'}</div>
+  </div>`;
+  v.querySelectorAll(".row").forEach(b=>b.onclick=()=>{selected=b.dataset.id;adding=false;ui.ck=null;ui.move=false;ui.soErr="";renderPipeline()});
+  v.querySelector("#addBtn").onclick=()=>{adding=true;renderPipeline()};
+  const ce=v.querySelector("#clearEx");if(ce) ce.onclick=clearExamples;
+  if(adding) wireForm(); else if(p) wireDetail(p);
+}
+
+function ckRow(p,c){
+  const x=ckStatus(p,c),r=x.r;
+  const fileLink=r?.file?.id?`<a href="/_blob/${esc(r.file.id)}" target="_blank" rel="noopener">${esc(r.file.name||"evidence file")}</a>`:"";
+  const ev=[fileLink,r?.evidence?esc(r.evidence):""].filter(Boolean).join(" · ");
+  let d=`<span>${esc(c.hint)}${c.id==="med"?": "+esc((p.work||[]).join(", ")):""}</span>`,dot="";
+  if(x.s==="valid"){dot="done";d=`Verified <b>${fmt(r.date)}</b> by <b>${esc(who(x.by))}</b> · ${esc(r.source)} · Evidence: <b>${ev}</b>`}
+  if(x.s==="loading"){dot="unc";d="Checking the log…"}
+  if(x.s==="unconfirmed"){dot="unc";d=`Marked done ${fmt(r.date)}, but no matching log entry exists. Does not count until recorded again.`}
+  if(x.s==="reverted"){dot="rev";d=`Reverted ${fmt(r.revertedAt)} by <b>${esc(who(x.by))}</b>: ${esc(r.reason)}${r.date?` (was verified ${fmt(r.date)})`:""}`}
+  const open=ui.ck===c.id;
+  const btn=readOnly||p.stage==="Withdrawn"?"":x.s==="valid"?`<button class="btn ghost small" data-rev="${c.id}">Revert</button>`:`<button class="btn small" data-rec="${c.id}">Record</button>`;
+  let form="";
+  if(open&&ui.ckDraft.mode==="rec") form=`<form class="subform" data-form="${c.id}">
+    <label class="f">Date verified<input type="date" id="ck-date" value="${esc(ui.ckDraft.date)}" max="${todayISO()}"></label>
+    <label class="f">Source<input id="ck-src" value="${esc(ui.ckDraft.source)}"></label>
+    ${assets||demo?`<label class="f" style="grid-column:1/-1">Evidence file (PDF or image)<input type="file" id="ck-file" accept="${FILE_TYPES.join(",")}" ${demo?"disabled":""}>${ui.ckFile?`<span>Attached: ${esc(ui.ckFile.name)}</span>`:demo?"<span>File upload works once records are saved.</span>":""}</label>`:""}
+    <label class="f" style="grid-column:1/-1">Reference (report number, confirmation number or link)<input id="ck-ev" value="${esc(ui.ckDraft.evidence)}" placeholder="e.g. QuickConfirm report 2026-10-06"></label>
+    <div class="actions">${ui.ckErr?`<span class="err">${esc(ui.ckErr)}</span>`:""}<span class="foot">Recorded as ${esc(who(actorId()))}</span><button type="button" class="btn ghost small" data-cancel>Cancel</button><button class="btn small" type="submit" ${ui.busy?"disabled":""}>Save record</button></div></form>`;
+  if(open&&ui.ckDraft.mode==="rev") form=`<form class="subform" data-form="${c.id}">
+    <label class="f" style="grid-column:1/-1">Reason for reverting (kept in the log)<input id="ck-reason" value="${esc(ui.ckDraft.reason)}" placeholder="e.g. Wrong license number checked"></label>
+    <div class="actions">${ui.ckErr?`<span class="err">${esc(ui.ckErr)}</span>`:""}<button type="button" class="btn ghost small" data-cancel>Cancel</button><button class="btn danger small" type="submit" ${ui.busy?"disabled":""}>Revert check</button></div></form>`;
+  return `<div class="ck"><span class="dot ${dot}" aria-hidden="true"></span><div><div class="t">${esc(c.l)}</div><div class="d">${d}</div></div><div>${btn}</div>${form}</div>`;
+}
+
+function gateHtml(p){
+  if(p.stage==="Withdrawn") return '<div class="gate crit">Withdrawn from the pipeline. The record is kept for audit.</div>';
+  if(!licOk(p)) return '<div class="gate crit">Not cleared: licensing gap in at least one patient state.</div>';
+  if(!allChecks(p)) return `<div class="gate crit">Not cleared: ${CHECKS.length-done(p)} check(s) not yet recorded with evidence.</div>`;
+  const so=signoff(p);
+  if(so.s==="valid") return `<div class="gate good">Cleared to schedule. Signed off ${fmt(so.e.ts)} by ${esc(who(so.by))}, who recorded none of the checks.</div>`;
+  const msg={none:"All checks recorded. A second person must sign off before scheduling.",stale:"A check changed after sign-off. Sign off again.",conflict:"Signed off by someone who also recorded a check. A different person must sign off.",unconfirmed:"Sign-off has no matching log entry. Sign off again.",loading:"Checking the log…"}[so.s];
+  const me2=actorId(),can=!readOnly&&sodOk(verifiers(p),me2);
+  return `<div class="gate warn"><span>${msg}</span>${readOnly||so.s==="loading"?"":`<button class="btn small" id="signoff" ${can&&!ui.busy?"":"disabled"} title="${can?"":"You recorded at least one of these checks"}">Sign off as ${esc(who(me2))}</button>`}</div>${!can&&!readOnly&&so.s!=="loading"?`<p class="foot" style="margin:-6px 0 12px">You recorded at least one of these checks, so you cannot sign off.${demo?" Switch to the second reviewer above to try it.":""}</p>`:""}${ui.soErr?`<p class="err">${esc(ui.soErr)}</p>`:""}`;
+}
+
+function detailHtml(p){
+  const R=currentRules(),f=flags(p),hist=logs.filter(l=>l.cid===p.id),ro=readOnly||p.stage==="Withdrawn"?"disabled":"";
+  const routes=(p.work||[]).map(w=>[w,route(p,w,R)]);
+  return `<div class="toolbar"><h2 style="margin:0">${esc(p.name)} ${p.example?'<span class="chip ex">Example</span>':""}</h2></div>
+  ${gateHtml(p)}
+  ${f.length?`<div class="legend">${f.map(([k,t])=>`<span class="chip ${k}">${esc(t)}</span>`).join("")}</div>`:""}
+  <div class="kv">
+    <label class="f">Stage<select id="d-stage" ${readOnly?"disabled":""}>${opts(STAGES,p.stage)}</select></label>
+    <label class="f">License type<select id="d-type" ${ro}>${opts(["LVN/LPN","RN"],p.type)}</select></label>
+    <label class="f">License number<input id="d-lic" class="mono" value="${esc(p.license)}" ${ro}></label>
+    <label class="f">License expires<input id="d-exp" type="date" value="${esc(p.expiry)}" ${ro}></label>
+    <label class="f">Planned start<input id="d-start" type="date" value="${esc(p.start||"")}" ${ro}></label>
+    <label class="f">Multistate license<select id="d-multi" ${ro}><option value="1" ${p.multi?"selected":""}>Yes</option><option value="0" ${!p.multi?"selected":""}>No</option></select></label>
+  </div>
+  <h3>Home state</h3>
+  <div class="d" style="font-size:13px">Lives in <b>${esc(p.home)}</b>${moved(p)?`, moved from ${esc(p.prevHome)} on ${fmt(p.movedOn)}`:""}.
+  ${ro?"":moved(p)?` <button class="btn ghost small" id="newHomeLic">New ${esc(p.home)} license issued</button>`:` <button class="btn ghost small" id="moveBtn">Record a move</button>`}</div>
+  ${ui.move?`<form class="subform" id="moveForm" style="grid-column:auto">
+    <label class="f">New home state<select id="mv-state">${stateOpts(ui.moveDraft.state,[p.home])}</select></label>
+    <label class="f">Moved on<input type="date" id="mv-date" value="${esc(ui.moveDraft.date)}" max="${todayISO()}"></label>
+    <div class="actions"><button type="button" class="btn ghost small" id="mv-cancel">Cancel</button><button class="btn small" type="submit">Save move</button></div></form>`:""}
+  <h3>Licenses held in other states</h3>
+  <div class="inline">
+    <div class="legend" style="margin:0">${(p.other||[]).map(s=>`<span class="chip good">${s}${ro?"":`<button data-rmlic="${s}" aria-label="Remove ${s} license">×</button>`}</span>`).join("")||'<span class="foot">None recorded.</span>'}</div>
+    ${ro?"":`<label class="f">Add a license held in<select id="addLic"><option value="">Choose a state</option>${stateOpts("",[p.home,...(p.other||[])])}</select></label>`}
+  </div>
+  <h3>Licensing route by patient state <span class="chip">Rules ${esc(R.version)}</span></h3>
+  <div class="tbl-wrap"><table><thead><tr><th>State</th><th>Status</th><th>Next action</th><th></th></tr></thead><tbody>
+  ${routes.map(([w,r])=>`<tr><td class="mono">${w}</td><td><span class="chip ${r.kind}">${esc(r.t)}</span></td><td>${esc(r.a)}</td><td style="white-space:nowrap">${ro||!r.need?"":r.applied?`<button class="btn ghost small" data-issued="${w}">License issued</button>`:`<button class="btn ghost small" data-applied="${w}">Application sent</button>`}</td></tr>`).join("")||'<tr><td colspan="4" class="empty">No patient states set.</td></tr>'}
+  </tbody></table></div>
+  <h3>Credential file (${done(p)}/${CHECKS.length} recorded)</h3>
+  <div class="cks">${CHECKS.map(c=>ckRow(p,c)).join("")}</div>
+  <h3>Record history</h3>
+  ${hist.length?`<div class="hist">${hist.map(l=>`<div><span class="w">${fmtT(l.ts)}</span><span><b>${esc(who(l.by))}</b> ${esc(l.action)}${l.detail?": "+esc(l.detail):""}</span></div>`).join("")}</div>`:`<p class="empty">${logsReady?"No changes recorded yet.":"Loading the log…"}</p>`}`;
+}
+
+function wireDetail(p){
+  const d=document.getElementById("detail");
+  const field=(sel,key,label,conv=x=>x,show=x=>x||"blank")=>{const el=d.querySelector(sel);if(!el||el.disabled)return;el.onchange=()=>{const val=conv(el.value),old=p[key];if(String(val)===String(old??""))return;
+    const patch={[key]:val};if(key==="stage") patch.since=todayISO();
+    act(()=>logged(p,{kind:"change",field:key,action:"changed "+label,detail:show(old)+" to "+show(val)},patch))}};
+  field("#d-stage","stage","stage");
+  field("#d-type","type","license type");
+  field("#d-lic","license","license number",x=>x.trim());
+  field("#d-exp","expiry","license expiry",x=>x,fmt);
+  field("#d-start","start","planned start",x=>x,x=>x?fmt(x):"blank");
+  field("#d-multi","multi","multistate status",x=>x==="1",x=>x?"Yes":"No");
+  d.querySelectorAll("[data-rec]").forEach(b=>b.onclick=()=>{const c=CHECKS.find(x=>x.id===b.dataset.rec);ui.ck=c.id;ui.ckErr="";ui.ckFile=null;ui.ckDraft={mode:"rec",date:todayISO(),source:c.src,evidence:""};renderPipeline();document.getElementById("ck-date")?.focus()});
+  d.querySelectorAll("[data-rev]").forEach(b=>b.onclick=()=>{ui.ck=b.dataset.rev;ui.ckErr="";ui.ckDraft={mode:"rev",reason:""};renderPipeline();document.getElementById("ck-reason")?.focus()});
+  const form=d.querySelector("[data-form]");
+  if(form){
+    const m={"ck-date":"date","ck-src":"source","ck-ev":"evidence","ck-reason":"reason"};
+    form.querySelectorAll("input:not([type=file])").forEach(i=>i.oninput=i.onchange=()=>{ui.ckDraft[m[i.id]]=i.value});
+    const fi=form.querySelector("#ck-file");if(fi) fi.onchange=()=>{ui.ckFile=fi.files[0]||null;ui.ckErr="";renderPipeline()};
+    form.querySelector("[data-cancel]").onclick=()=>{ui.ck=null;renderPipeline()};
+    form.onsubmit=e=>{e.preventDefault();const c=CHECKS.find(x=>x.id===ui.ck),dr=ui.ckDraft;
+      if(dr.mode==="rec"){
+        if(!dr.date){ui.ckErr="Enter the date the check was done.";return renderPipeline()}
+        if(dr.date>todayISO()){ui.ckErr="The date cannot be in the future.";return renderPipeline()}
+        if(!dr.evidence.trim()&&!ui.ckFile){ui.ckErr="Attach the evidence file or enter a reference.";return renderPipeline()}
+        if(ui.ckFile&&!FILE_TYPES.includes(ui.ckFile.type)){ui.ckErr="Attach a PDF, PNG, JPEG or WebP file.";return renderPipeline()}
+        act(async()=>{
+          let file=null;
+          if(ui.ckFile){const up=await assets.upload(ui.ckFile,{type:ui.ckFile.type}).catch(err=>{throw{code:"upload",err}});file={id:up.id,name:ui.ckFile.name}}
+          const rec={date:dr.date,source:dr.source.trim()||c.src,evidence:dr.evidence.trim(),file};
+          await logged(p,{kind:"check",ck:c.id,...rec,action:"recorded "+c.l,detail:`verified ${fmt(rec.date)} via ${rec.source}; evidence ${[file?.name,rec.evidence].filter(Boolean).join(", ")}`},
+            path=>({checks:{[c.id]:{status:"done",...rec,recordedAt:new Date().toISOString(),logRef:path,reason:null,revertedAt:null,revertLogRef:null}}}));
+          ui.ck=null;ui.ckFile=null;
+        });
+      }else{
+        if(!dr.reason.trim()){ui.ckErr="Give a reason. It is kept in the log.";return renderPipeline()}
+        act(async()=>{await logged(p,{kind:"revert",ck:c.id,action:"reverted "+c.l,detail:dr.reason.trim()},
+          path=>({checks:{[c.id]:{status:"reverted",revertedAt:todayISO(),revertLogRef:path,reason:dr.reason.trim()}}}));ui.ck=null});
+      }};
+  }
+  const so=d.querySelector("#signoff");
+  if(so) so.onclick=()=>{ui.soErr="";
+    if(!sodOk(verifiers(p),actorId())){ui.soErr="You recorded at least one of these checks, so you cannot sign off.";return renderPipeline()}
+    act(()=>logged(p,{kind:"signoff",action:"signed off clearance",detail:`${CHECKS.length} checks, licensing covered in ${p.work.join(", ")}`},path=>({signoff:{logRef:path,date:todayISO()}})))};
+  const mb=d.querySelector("#moveBtn");if(mb) mb.onclick=()=>{ui.move=true;ui.moveDraft={state:CODES.find(s=>s!==p.home),date:todayISO()};renderPipeline()};
+  const mf=d.querySelector("#moveForm");
+  if(mf){mf.querySelector("#mv-state").onchange=e=>ui.moveDraft.state=e.target.value;mf.querySelector("#mv-date").onchange=e=>ui.moveDraft.date=e.target.value;
+    mf.querySelector("#mv-cancel").onclick=()=>{ui.move=false;renderPipeline()};
+    mf.onsubmit=e=>{e.preventDefault();const s=ui.moveDraft;if(!s.date) return;
+      act(async()=>{await logged(p,{kind:"move",action:"recorded a move",detail:`${p.home} to ${s.state} on ${fmt(s.date)}`},{prevHome:p.home,home:s.state,movedOn:s.date});ui.move=false})}}
+  const nh=d.querySelector("#newHomeLic");if(nh) nh.onclick=()=>act(()=>logged(p,{kind:"change",action:"recorded new home-state license",detail:p.home},{prevHome:"",movedOn:""}));
+  const al=d.querySelector("#addLic");if(al) al.onchange=()=>{const s=al.value;if(!s)return;act(()=>logged(p,{kind:"license",action:"added license held",detail:s},{other:[...(p.other||[]),s]}))};
+  d.querySelectorAll("[data-rmlic]").forEach(b=>b.onclick=()=>{const s=b.dataset.rmlic;act(()=>logged(p,{kind:"license",action:"removed license held",detail:s},{other:(p.other||[]).filter(x=>x!==s)}))});
+  d.querySelectorAll("[data-applied]").forEach(b=>b.onclick=()=>{const w=b.dataset.applied;act(()=>logged(p,{kind:"app",action:"license application sent",detail:w},{apps:{[w]:{submitted:todayISO()}}}))});
+  d.querySelectorAll("[data-issued]").forEach(b=>b.onclick=()=>{const w=b.dataset.issued;act(()=>logged(p,{kind:"app",action:"license issued",detail:w},{apps:{[w]:{issued:todayISO()}},other:[...new Set([...(p.other||[]),w])]}))});
+}
+
+function formHtml(){
+  const a=addDraft;
+  return `<h2>Add a candidate</h2>
+  <form id="addForm">
+  <div class="kv">
+    <label class="f">Full name<input id="f-name" value="${esc(a.name)}" placeholder="Name"></label>
+    <label class="f">License type<select id="f-type">${opts(["LVN/LPN","RN"],a.type)}</select></label>
+    <label class="f">Home state (primary residence)<select id="f-home">${stateOpts(a.home)}</select></label>
+    <label class="f">Multistate license<select id="f-multi"><option value="1" ${a.multi==="1"?"selected":""}>Yes</option><option value="0" ${a.multi==="0"?"selected":""}>No</option></select></label>
+    <label class="f">License number<input id="f-lic" class="mono" value="${esc(a.lic)}" placeholder="As shown on Nursys"></label>
+    <label class="f">License expires<input id="f-exp" type="date" value="${esc(a.exp)}"></label>
+    <label class="f">Planned start<input id="f-start" type="date" value="${esc(a.start)}"></label>
+  </div>
+  <h3>States where their patients are</h3>
+  <div class="statepick" id="f-work">${CODES.map(s=>`<button type="button" data-s="${s}" aria-pressed="${a.work.includes(s)}" title="${NAMES[s]}">${s}</button>`).join("")}</div>
+  <p class="foot">Licenses already held in other states can be added once the candidate is created.</p>
+  <div class="toolbar" style="margin-top:10px"><span class="err" id="f-err"></span><button type="button" class="btn ghost" id="f-cancel">Cancel</button><button class="btn" type="submit" ${ui.busy?"disabled":""}>Add and route</button></div>
+  </form>`;
+}
+function wireForm(){
+  const f=document.getElementById("addForm"),a=addDraft;
+  const map={"f-name":"name","f-type":"type","f-home":"home","f-multi":"multi","f-lic":"lic","f-exp":"exp","f-start":"start"};
+  Object.keys(map).forEach(id=>{const el=f.querySelector("#"+id);el.oninput=el.onchange=()=>a[map[id]]=el.value});
+  f.querySelectorAll("#f-work button").forEach(b=>b.onclick=()=>{const s=b.dataset.s;a.work=a.work.includes(s)?a.work.filter(x=>x!==s):[...a.work,s];b.setAttribute("aria-pressed",a.work.includes(s))});
+  f.querySelector("#f-cancel").onclick=()=>{adding=false;renderPipeline()};
+  f.onsubmit=e=>{e.preventDefault();
+    if(!a.name.trim()){f.querySelector("#f-err").textContent="Enter the candidate's name.";return}
+    if(!a.work.length){f.querySelector("#f-err").textContent="Pick at least one state where their patients are.";return}
+    act(async()=>{
+      const data={name:a.name.trim(),type:a.type,home:a.home,multi:a.multi==="1",other:[],apps:{},work:a.work.slice(),license:a.lic.trim(),expiry:a.exp||"",start:a.start||"",stage:"Pre-screen",since:todayISO(),checks:{},example:false,createdAt:new Date().toISOString()};
+      const id=demo?"d"+Date.now():db.collection("candidates").doc().id;
+      const p={id,...data};
+      await writeLog({cid:id,cname:data.name,kind:"add",action:"added candidate",detail:`${data.type}, lives in ${data.home}, patients in ${data.work.join(", ")}`});
+      if(demo) people.push(p); else await db.doc("candidates/"+id).set(data);
+      selected=id;adding=false;addDraft={name:"",type:"LVN/LPN",home:"TX",multi:"1",lic:"",exp:addDays(365),start:"",work:[]};
+    })};
+}
+async function clearExamples(){
+  act(async()=>{
+    for(const p of people.filter(x=>x.example)) await db.doc("candidates/"+p.id).delete();
+    for(const s of screens.filter(x=>x.example)) await db.doc("screenings/"+s.id).delete();
+    await writeLog({cid:"",cname:"",kind:"admin",action:"removed example records",detail:"candidates and screenings marked as examples"});
+  });
+}
+
+/* ===== Monitoring ===== */
+function renderMonitor(){
+  const v=document.getElementById("view-monitor");
+  const live=people.filter(p=>p.stage!=="Withdrawn");
+  const ren=[...live].filter(p=>p.expiry).sort((a,b)=>a.expiry.localeCompare(b.expiry));
+  const month=todayISO().slice(0,7);
+  const validScreens=screens.filter(s=>{const e=LOG[s.logRef];return e&&e.kind==="screening"&&e.month===s.month});
+  const ranThisMonth=validScreens.some(s=>s.month===month);
+  const states=[...new Set(live.flatMap(p=>p.work||[]))].sort();
+  const sla=live.map(p=>({p,t:TARGET[p.stage],age:p.since?-daysFrom(p.since):0})).filter(x=>x.t!=null);
+  const gate=live.filter(p=>["Onboarding","Active"].includes(p.stage)&&!cleared(p));
+  v.innerHTML=`<div class="grid">
+   <div class="panel"><h2>License renewals</h2>
+    ${ren.length?`<div class="tbl-wrap"><table><thead><tr><th>Nurse</th><th>License</th><th>Expires</th><th class="num">Days</th></tr></thead><tbody>
+    ${ren.map(p=>{const d=daysFrom(p.expiry),k=d<=30?"crit":d<=90?"warn":"good";return `<tr><td>${esc(p.name)}</td><td class="mono">${esc(p.license)}</td><td>${fmt(p.expiry)}</td><td class="num"><span class="chip ${k}">${d}</span></td></tr>`}).join("")}
+    </tbody></table></div>`:'<p class="empty">No license expiry dates on file yet.</p>'}
+    <p class="foot">At renewal, revert the license check with the reason "renewal" and record a fresh primary-source verification. No proof of renewal by expiry means no shifts.</p>
+    <h3>Scheduling gate</h3>
+    ${gate.length?gate.map(p=>`<div class="gate crit">${esc(p.name)} is in ${esc(p.stage)} but not cleared.</div>`).join(""):'<p class="empty">Nobody in onboarding or active work is missing a clearance.</p>'}
+    <h3>Stage time against target</h3>
+    ${sla.length?`<table><thead><tr><th>Nurse</th><th>Stage</th><th class="num">Days</th><th class="num">Target</th></tr></thead><tbody>
+    ${sla.map(x=>`<tr><td>${esc(x.p.name)}</td><td>${esc(x.p.stage)}</td><td class="num"><span class="chip ${x.age>x.t?"warn":"good"}">${x.age}</span></td><td class="num">${x.t}</td></tr>`).join("")}</tbody></table>`:'<p class="empty">Nobody is in a timed stage.</p>'}
+   </div>
+   <div class="panel"><h2>Monthly exclusion screening</h2>
+    <div class="gate ${ranThisMonth?"good":"crit"}">${ranThisMonth?"This month's run is recorded.":"This month's run has not been recorded."}</div>
+    <p class="foot" style="margin:0 0 10px">Screen every nurse against OIG LEIE, SAM.gov and the Medicaid lists for ${esc(states.join(", ")||"each patient state")}. Each month needs its own record.</p>
+    ${readOnly?"":`<form id="scrForm" class="kv" style="margin-bottom:12px">
+      <label class="f">Date run<input type="date" id="s-date" value="${esc(scrDraft.date)}" max="${todayISO()}"></label>
+      <label class="f">Result<select id="s-res">${opts(["No matches","Possible match, cleared on review","Match found, nurse removed from schedule"],scrDraft.result)}</select></label>
+      <label class="f" style="grid-column:1/-1">Evidence (screening report or reference)<input id="s-ev" value="${esc(scrDraft.evidence)}" placeholder="e.g. Exclusions report 2026-10"></label>
+      <div class="actions">${scrErr?`<span class="err">${esc(scrErr)}</span>`:""}<button class="btn small" type="submit" ${ui.busy?"disabled":""}>Record run</button></div>
+    </form>`}
+    ${screens.length?`<div class="tbl-wrap"><table><thead><tr><th>Month</th><th>Run on</th><th>By</th><th class="num">Nurses</th><th>Result</th><th>Evidence</th></tr></thead><tbody>
+    ${screens.map(s=>{const ok=validScreens.includes(s);return `<tr><td class="mono">${esc(s.month)}</td><td>${fmt(s.date)}</td><td>${ok?esc(who(uidOf(s.logRef))):'<span class="chip crit">No log entry</span>'}</td><td class="num">${esc(s.count)}</td><td>${esc(s.result)}</td><td>${esc(s.evidence)}</td></tr>`}).join("")}</tbody></table></div>`:'<p class="empty">No screening runs recorded yet.</p>'}
+   </div></div>`;
+  const f=v.querySelector("#scrForm");
+  if(f){
+    f.querySelector("#s-date").onchange=e=>scrDraft.date=e.target.value;
+    f.querySelector("#s-res").onchange=e=>scrDraft.result=e.target.value;
+    f.querySelector("#s-ev").oninput=e=>scrDraft.evidence=e.target.value;
+    f.onsubmit=e=>{e.preventDefault();
+      if(!scrDraft.date||!scrDraft.evidence.trim()){scrErr="Add the date and the evidence reference.";return renderMonitor()}
+      if(scrDraft.date>todayISO()){scrErr="The date cannot be in the future.";return renderMonitor()}
+      scrErr="";
+      act(async()=>{
+        const s={month:scrDraft.date.slice(0,7),date:scrDraft.date,count:live.length,result:scrDraft.result,evidence:scrDraft.evidence.trim(),lists:["OIG LEIE","SAM.gov",...states.map(x=>x+" Medicaid")],recordedAt:new Date().toISOString()};
+        const path=await writeLog({cid:"",cname:"",kind:"screening",month:s.month,action:"recorded exclusion screening",detail:`${s.month}: ${s.result} (${s.count} nurses); evidence ${s.evidence}`});
+        s.logRef=path;
+        if(demo) screens.unshift({id:"s"+Date.now(),...s}); else await db.collection("screenings").add(s);
+        scrDraft={date:todayISO(),result:"No matches",evidence:""};
+      })};
+  }
+}
+
+/* ===== Audit ===== */
+let auditFilter="";
+function renderAudit(){
+  const v=document.getElementById("view-audit");
+  const rows=logs.filter(l=>!auditFilter||(l.cname+" "+l.action+" "+l.detail+" "+who(l.by)).toLowerCase().includes(auditFilter.toLowerCase()));
+  v.innerHTML=`<div class="panel"><div class="toolbar"><h2 style="margin:0">Audit log (${logs.length})</h2><input id="af" placeholder="Filter by nurse, person or action" value="${esc(auditFilter)}" style="max-width:280px"></div>
+   <p class="foot" style="margin:0 0 10px">Each entry is stored under the identity of the person who made it, so the name shown comes from the platform rather than the page. Records point at these entries, and a record without a matching entry does not count.</p>
+   ${rows.length?`<div class="tbl-wrap"><table><thead><tr><th>When</th><th>Who</th><th>Nurse</th><th>What</th></tr></thead><tbody>
+   ${rows.map(l=>`<tr><td style="white-space:nowrap">${fmtT(l.ts)}</td><td>${esc(who(l.by))}</td><td>${esc(l.cname||"All nurses")}</td><td>${esc(l.action)}${l.detail?": "+esc(l.detail):""}</td></tr>`).join("")}</tbody></table></div>`:`<p class="empty">${logsReady?"Nothing recorded yet.":"Loading the log…"}</p>`}
+  </div>`;
+  v.querySelector("#af").oninput=e=>{auditFilter=e.target.value;keepFocus(renderAudit)};
+}
+
+/* ===== Scorecard ===== */
+function renderScore(){
+  const v=document.getElementById("view-score");
+  const live=people.filter(p=>p.stage!=="Withdrawn"),n=live.length,R=currentRules();
+  const cl=live.filter(cleared).length,multi=live.filter(p=>multiValid(p,R).ok).length;
+  const gaps=live.filter(p=>!licOk(p)).length,exp90=live.filter(p=>p.expiry&&daysFrom(p.expiry)<=90).length;
+  const awaiting=live.filter(p=>licOk(p)&&allChecks(p)&&signoff(p).s!=="valid").length;
+  const late=live.filter(p=>flags(p).some(f=>f[1].includes("dated after start"))).length;
+  const counts=STAGES.filter(s=>s!=="Withdrawn").map(s=>[s,live.filter(p=>p.stage===s).length]);
+  const max=Math.max(1,...counts.map(c=>c[1])),pct=x=>n?Math.round(100*x/n)+"%":"0%";
+  const col=(x,c)=>x?`style="color:var(--${c})"`:"";
+  v.innerHTML=`<div class="tiles">
+    <div class="tile"><div class="v">${cl}<span style="font-size:1rem;color:var(--muted)"> / ${n}</span></div><div class="l">Cleared to schedule</div></div>
+    <div class="tile"><div class="v" ${col(awaiting,"warn")}>${awaiting}</div><div class="l">Awaiting second-person sign-off</div></div>
+    <div class="tile"><div class="v">${pct(multi)}</div><div class="l">Hold a valid multistate license</div></div>
+    <div class="tile"><div class="v" ${col(gaps,"crit")}>${gaps}</div><div class="l">With a licensing gap</div></div>
+    <div class="tile"><div class="v" ${col(late,"crit")}>${late}</div><div class="l">With a check dated after start</div></div>
+    <div class="tile"><div class="v" ${col(exp90,"warn")}>${exp90}</div><div class="l">Licenses renewing within 90 days</div></div>
+  </div>
+  <div class="panel" style="margin-top:16px"><h2>Pipeline by stage</h2>
+   <div style="display:flex;flex-direction:column;gap:6px">${counts.map(([s,c])=>`<div class="bar"><span class="lab">${s}</span><span class="track"><span class="fill" style="width:${100*c/max}%"></span></span><span class="n">${c}</span></div>`).join("")}</div>
+   <p class="foot">Time to clear and time to first shift can be added once enough candidates have completed the pipeline.</p>
+  </div>`;
+}
+
+/* ===== Rules, tests, limits ===== */
+function runTests(){
+  const R=DEFAULT_RULES,at="2026-10-06";
+  const P=(o)=>({type:"LVN/LPN",multi:false,other:[],apps:{},...o});
+  const T=[
+    ["TX multistate nurse covers an Arizona patient",()=>route(P({home:"TX",multi:true}),"AZ",R,at).ok===true],
+    ["TX single-state nurse needs an upgrade for Arizona",()=>route(P({home:"TX"}),"AZ",R,at).t==="Needs multistate upgrade"],
+    ["NY resident needs a New Jersey license",()=>route(P({home:"NY"}),"NJ",R,at).ok===false],
+    ["NY resident who holds a NJ license is covered in NJ",()=>route(P({home:"NY",other:["NJ"]}),"NJ",R,at).ok===true],
+    ["California LVN covers a California patient",()=>route(P({home:"CA"}),"CA",R,at).ok===true],
+    ["WA multistate nurse still needs an Oregon license",()=>route(P({home:"WA",multi:true}),"OR",R,at).ok===false],
+    ["Massachusetts is treated as non-compact until live",()=>route(P({home:"FL",multi:true}),"MA",R,at).ok===false],
+    ["Moved TX to FL 20 days ago: multistate still valid",()=>route(P({home:"FL",prevHome:"TX",movedOn:"2026-09-16",multi:true}),"AZ",R,at).ok===true],
+    ["Moved TX to FL 70 days ago: multistate no longer valid",()=>route(P({home:"FL",prevHome:"TX",movedOn:"2026-07-28",multi:true}),"AZ",R,at).ok===false],
+    ["Moved TX to CA: multistate stops covering other states",()=>route(P({home:"CA",prevHome:"TX",movedOn:"2026-10-01",multi:true}),"AZ",R,at).ok===false],
+    ["Moved TX to CA: Texas license still covers Texas",()=>route(P({home:"CA",prevHome:"TX",movedOn:"2026-10-01",multi:true}),"TX",R,at).ok===true],
+    ["A recorded application is not counted as a license",()=>route(P({home:"NY",apps:{NJ:{submitted:"2026-10-01"}}}),"NJ",R,at).ok===false],
+    ["A person who recorded a check cannot sign off",()=>sodOk(new Set(["u1","u2"]),"u1")===false&&sodOk(new Set(["u1"]),"u2")===true],
+    ["Dates stay on the local calendar day",()=>localISO(new Date(2026,0,1,23,30))==="2026-01-01"],
+    ["Day counts survive a clock change",()=>daysBetween("2026-03-07","2026-03-09")===2],
+    ["The 60-day deadline lands on the right date",()=>plusDays("2026-12-15",60)==="2027-02-13"]
+  ];
+  return T.map(([name,fn])=>{let pass=false;try{pass=!!fn()}catch(e){pass=false}return {name,pass}});
+}
+let stateFilter="";
+function renderRules(){
+  const v=document.getElementById("view-rules"),R=currentRules(),tests=runTests(),passed=tests.filter(t=>t.pass).length;
+  const all=[DEFAULT_RULES,...rulesets].sort((a,b)=>(b.effective+(b.createdAt||"")).localeCompare(a.effective+(a.createdAt||"")));
+  const rows=CODES.filter(s=>(s+" "+NAMES[s]).toLowerCase().includes(stateFilter.toLowerCase()));
+  const lab={compact:["good","Compact"],pending:["warn","Enacted, not live"],non:["crit","Non-compact"]};
+  v.innerHTML=`<div style="display:flex;flex-direction:column;gap:16px">
+  <div class="panel"><h2>What this prototype enforces, and what production needs</h2>
+   <div class="limits">
+    <div><h3 style="margin-top:0">Enforced here</h3><ul>
+     <li>Log entries are stored under each person's own identity; nobody else can write in their name.</li>
+     <li>A check counts only when a matching log entry exists, so a record cannot be marked done without leaving a trace.</li>
+     <li>The log is written first. If a save fails halfway, the log shows the attempt and the check stays open.</li>
+     <li>Clearance needs a sign-off from someone who recorded none of the checks, and it goes stale if a check changes afterwards.</li>
+     <li>Evidence can be the actual file, stored with the record.</li>
+     <li>Compact rules are versioned data with effective dates; only editors can change them.</li>
+    </ul></div>
+    <div><h3 style="margin-top:0">Needs a production system</h3><ul>
+     <li>Authors can still edit their own log entries, and the owner can edit any. A server-side append-only log closes this.</li>
+     <li>Everyone with access sees every record. Health records and background results need field-level access rules.</li>
+     <li>No retention or deletion policy, and no business associate agreement for health data.</li>
+     <li>No direct connection to Nursys, background vendors or the HR system; results are entered by hand.</li>
+     <li>Routing past rule changes uses today's rules; a production system would store the rule version used at each decision.</li>
+    </ul></div>
+   </div>
+  </div>
+  <div class="panel"><div class="toolbar"><h2 style="margin:0">Rule tests</h2><span class="chip ${passed===tests.length?"good":"crit"}">${passed} of ${tests.length} pass</span></div>
+   <p class="foot" style="margin:0 0 10px">These run every time the page opens, against rule set v1 and a fixed date, so a change to the logic that breaks a case shows here.</p>
+   <div class="tbl-wrap"><table><thead><tr><th>Case</th><th>Result</th></tr></thead><tbody>${tests.map(t=>`<tr><td>${esc(t.name)}</td><td><span class="chip ${t.pass?"good":"crit"}">${t.pass?"Pass":"Fail"}</span></td></tr>`).join("")}</tbody></table></div>
+  </div>
+  <div class="panel"><h2>Rule versions</h2>
+   <div class="tbl-wrap"><table><thead><tr><th>Version</th><th>Effective</th><th>Change</th><th>By</th><th></th></tr></thead><tbody>
+   ${all.map(r=>`<tr><td class="mono">${esc(r.version)}</td><td>${fmt(r.effective)}</td><td>${esc(r.note)}${r.source?" ("+esc(r.source)+")":""}</td><td>${r.id==="builtin"?"Built in":esc(who(uidOf(r.logRef)))}</td><td>${r===R?'<span class="chip good">In effect</span>':r.effective>todayISO()?'<span class="chip warn">Scheduled</span>':""}</td></tr>`).join("")}
+   </tbody></table></div>
+   ${isAdmin&&!demo?`<h3>Change a state's status</h3><form id="ruleForm" class="kv">
+     <label class="f">State<select id="r-state">${stateOpts(ruleDraft.state)}</select></label>
+     <label class="f">New status<select id="r-status">${opts(["compact","pending","non"],ruleDraft.status,x=>({compact:"Compact",pending:"Enacted, not live",non:"Non-compact"}[x]))}</select></label>
+     <label class="f">Effective from<input type="date" id="r-eff" value="${esc(ruleDraft.effective)}"></label>
+     <label class="f" style="grid-column:1/-1">Source and note<input id="r-note" value="${esc(ruleDraft.note)}" placeholder="e.g. NCSBN map update, Massachusetts goes live"></label>
+     <div class="actions">${ruleErr?`<span class="err">${esc(ruleErr)}</span>`:""}<button class="btn small" type="submit" ${ui.busy?"disabled":""}>Publish new rule version</button></div></form>`:`<p class="foot">Only editors of this page can publish a new rule version.</p>`}
+  </div>
+  <div class="panel"><div class="toolbar"><h2 style="margin:0">State lookup (rules ${esc(R.version)})</h2><input id="sf" placeholder="Filter by state" value="${esc(stateFilter)}" style="max-width:240px"></div>
+   <div class="legend"><span class="chip good">Compact: ${R.compact.length}</span><span class="chip warn">Enacted, not live: ${R.pending.length}</span><span class="chip crit">Non-compact: ${CODES.length-R.compact.length-R.pending.length}</span></div>
+   <div class="tbl-wrap"><table><thead><tr><th>State</th><th>Status</th><th>Hiring route</th><th>Verify through</th></tr></thead><tbody>
+   ${rows.map(s=>{const st=statusOf(R,s);return `<tr><td><span class="mono">${s}</span> ${NAMES[s]}</td><td><span class="chip ${lab[st][0]}">${lab[st][1]}</span></td><td>${st==="compact"?"Any compact-state resident with a valid multistate license":"Nurse needs a "+s+" license; hire in-state or sponsor endorsement"}</td><td>${s==="CA"?"RNs: Board of Registered Nursing. LVNs: BVNPT lookup. Both on Nursys.":"Nursys QuickConfirm; confirm with the "+NAMES[s]+" board if not listed"}</td></tr>`}).join("")}
+   </tbody></table></div>
+  </div></div>`;
+  v.querySelector("#sf").oninput=e=>{stateFilter=e.target.value;keepFocus(renderRules)};
+  const rf=v.querySelector("#ruleForm");
+  if(rf){
+    const m={"r-state":"state","r-status":"status","r-eff":"effective","r-note":"note"};
+    rf.querySelectorAll("input,select").forEach(i=>i.oninput=i.onchange=()=>ruleDraft[m[i.id]]=i.value);
+    rf.onsubmit=e=>{e.preventDefault();
+      if(!ruleDraft.effective||!ruleDraft.note.trim()){ruleErr="Add the effective date and the source.";return renderRules()}
+      ruleErr="";
+      const base=currentRules(ruleDraft.effective),s=ruleDraft.state;
+      const compact=base.compact.filter(x=>x!==s),pending=base.pending.filter(x=>x!==s);
+      if(ruleDraft.status==="compact") compact.push(s); if(ruleDraft.status==="pending") pending.push(s);
+      const n=rulesets.length+2;
+      act(async()=>{
+        const r={version:"v"+n,effective:ruleDraft.effective,compact:compact.sort(),pending:pending.sort(),note:`${s} set to ${({compact:"compact",pending:"enacted, not live",non:"non-compact"})[ruleDraft.status]}. ${ruleDraft.note.trim()}`,source:"",createdAt:new Date().toISOString()};
+        r.logRef=await writeLog({cid:"",cname:"",kind:"rules",action:"published rule version "+r.version,detail:r.note+" Effective "+fmt(r.effective)});
+        await db.collection("rulesets").add(r);
+        ruleDraft={state:"MA",status:"compact",effective:todayISO(),note:""};
+      })};
+  }
+}
+
+/* ===== Shell ===== */
+const views={pipeline:renderPipeline,monitor:renderMonitor,audit:renderAudit,score:renderScore,rules:renderRules};
+function renderAll(){keepFocus(views[tab])}
+document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{
+  tab=b.dataset.tab;
+  document.querySelectorAll("nav button").forEach(x=>x.setAttribute("aria-selected",x===b));
+  Object.keys(views).forEach(k=>document.getElementById("view-"+k).hidden=k!==tab);
+  views[tab]();
+});
+function setNote(){
+  const n=document.getElementById("modeNote"),a=document.getElementById("actor");
+  if(demo){n.className="note warn";n.textContent="Demo mode: nothing is saved when you leave.";
+    a.innerHTML=`<span class="note warn">Acting as <select id="actorSel">${opts(["demo-you","demo-reviewer"],demoActor,who)}</select></span>`;
+    a.querySelector("#actorSel").onchange=e=>{demoActor=e.target.value;renderAll()};return}
+  a.innerHTML="";
+  if(readOnly){n.className="note warn";n.textContent="View only: you can read these records but not change them."}
+  else{n.className="note good";n.textContent="Records are saved. Every change is logged under the name of the person who made it."}
+}
+function rebuildLogs(){
+  logs=Object.values(LOG).sort((a,b)=>b.ts.localeCompare(a.ts));
+}
+async function resolveNames(){
+  if(!user) return;
+  const ids=[...new Set(logs.map(l=>l.by))].filter(x=>x&&!x.startsWith("demo")&&x!=="example"&&!(x in names));
+  if(!ids.length) return;
+  const ps=await user.profiles(ids);
+  ids.forEach(id=>names[id]=ps[id]?.name||"");
+  renderAll();
+}
+function subscribeLog(uid){
+  if(logSubs[uid]) return;
+  logSubs[uid]=db.collection(`log/${uid}/entries`).orderBy("ts","desc").limit(500).onSnapshot(s=>{
+    for(const k of Object.keys(LOG)) if(k.startsWith(`log/${uid}/entries/`)) delete LOG[k];
+    s.docs.forEach(d=>{const path=`log/${uid}/entries/${d.id}`;LOG[path]={...d.data(),by:uid,path}});
+    loadedLogs.add(uid);logsReady=[...Object.keys(logSubs)].every(u=>loadedLogs.has(u));
+    rebuildLogs();renderAll();resolveNames();
+  },()=>{loadedLogs.add(uid);flash("Part of the log could not be loaded. Reload to try again.")});
+}
+function startDemo(){
+  demo=true;logsReady=true;
+  const ex=(n)=>addDays(n);
+  const mk=(p,c,n,ev)=>{const path=`log/example/entries/${p.id}-${c.id}`;const date=ex(n);LOG[path]={kind:"check",cid:p.id,cname:p.name,ck:c.id,date,ts:date+"T17:00:00.000Z",by:"example",path,action:"recorded "+c.l,detail:"verified "+fmt(date)+"; evidence "+ev};
+    p.checks[c.id]={status:"done",date,source:c.src,evidence:ev,file:null,logRef:path}};
+  const base=o=>({other:[],apps:{},checks:{},example:true,createdAt:"",...o});
+  const maria=base({id:"ex-maria",name:"Maria Lopez",type:"LVN/LPN",home:"TX",multi:true,work:["TX","OK","AZ"],license:"TX-LVN-318442",expiry:ex(178),start:ex(9),stage:"Credentialing",since:ex(-6)});
+  const james=base({id:"ex-james",name:"James Carter",type:"LVN/LPN",home:"CA",multi:false,work:["CA"],license:"CA-VN-274019",expiry:ex(54),start:"",stage:"Interview",since:ex(-7)});
+  const priya=base({id:"ex-priya",name:"Priya Shah",type:"RN",home:"NY",multi:false,work:["NJ","PA"],license:"NY-RN-0912337",expiry:ex(410),start:"",stage:"Licensure path",since:ex(-18),apps:{NJ:{submitted:ex(-12)}}});
+  const grace=base({id:"ex-grace",name:"Grace Okafor",type:"RN",home:"WA",multi:true,work:["WA","OR"],other:["OR"],license:"WA-RN-60811492",expiry:ex(22),start:ex(-2),stage:"Onboarding",since:ex(-3)});
+  CHECKS.forEach(c=>{if(!["tb","scope"].includes(c.id)) mk(maria,c,-4,"Example evidence")});
+  mk(james,CHECKS[0],-8,"BreEZe result");
+  mk(priya,CHECKS[0],-20,"QuickConfirm report");mk(priya,CHECKS[4],-19,"No match");
+  CHECKS.forEach(c=>mk(grace,c,c.id==="qc"?-1:-10,"Example evidence"));
+  people=[maria,james,priya,grace];selected=maria.id;
+  rebuildLogs();setNote();renderAll();
+}
+async function init(){
+  renderPipeline();
+  const c=window.claude;
+  if(!c?.use){startDemo();return}
+  [db,user]=await Promise.all([c.use("db"),c.use("user")]);
+  if(!db){startDemo();return}
+  me=await user?.id()??null;
+  isOwner=await user?.isOwner()??false;
+  isAdmin=await user?.canEdit()??false;
+  const cw=await user?.can("data.write");
+  readOnly=cw===false||!me;
+  if(!readOnly) assets=await c.use("assets").catch(()=>null);
+  setNote();
+  db.collection("candidates").onSnapshot(s=>{
+    people=s.docs.map(d=>({id:d.id,...structuredClone(d.data())})).sort((a,b)=>(a.createdAt||"").localeCompare(b.createdAt||""));
+    if(!people.find(p=>p.id===selected)) selected=people[0]?.id||null;
+    renderAll();
+  },()=>flash("Records could not be loaded. Reload the page to try again."));
+  db.collection("screenings").orderBy("date","desc").limit(60).onSnapshot(s=>{screens=s.docs.map(d=>({id:d.id,...d.data()}));renderAll()});
+  db.collection("rulesets").onSnapshot(s=>{rulesets=s.docs.map(d=>({id:d.id,...d.data()}));renderAll()});
+  if(me) subscribeLog(me);
+  db.doc("meta/contributors").onSnapshot(async s=>{
+    const ids=s.exists?(s.data().ids||[]):[];
+    ids.forEach(subscribeLog);
+    if(me&&!readOnly&&!ids.includes(me)){try{await db.doc("meta/contributors").set({ids:[...ids,me]})}catch{}}
+    if(!ids.length&&!me){logsReady=true;renderAll()}
+  });
+}
+init();
+</script>
+</body></html>
